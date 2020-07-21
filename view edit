@@ -1,0 +1,273 @@
+<div class="box-body">
+	<div class="form-group col-md-6">
+		<label>Mã lô hàng</label>
+		<select class="form-control field-validate" name="plot_id">
+			@foreach ($plots as $value)
+			<option value="{{ $value->id }}" @if($data[0]->plot_id == $value->id) selected @endif>{{ $value->code }}</option>
+			@endforeach
+		</select>
+	</div>
+    <div class="form-group col-md-6">
+    	<label>Ngày sản xuất</label>
+    	<input type="date" class="form-control field-validate" name="date_manufacture" value="{{ $data[0]->date_manufacture }}">
+    	<span class="error-content text-danger" hidden="">Trường thông tin bắt buộc.</span>
+    </div>
+</div>
+
+<div class="row">
+       <input type="number" hidden="" name="count" value=1 id="count">
+         <table id="t1" width="100%" class="table-1 form-group" style="margin-left: 15px;">                             
+            <tr>
+                <th>Nông trường</th>
+                <th>Số xe</th>
+                <th>Số chuyến</th>
+                <th>Ngày nhận</th>
+                <th>Khối lượng bành</th>
+                <th>Khối lượng lô hàng</th>
+            </tr>
+            @foreach ($data as $key => $value)
+            <tr>
+            	<input type="hidden" name="old_id{{++$key}}" value="{{ $value->id }}">
+                <td valign="top">
+                	<input class="form-control field-validate" list="list_farm" listaffter="list_transport" name="farm{{$key}}" id="farm" onchange="farmFunc(this)" value="{{ $value->farm }}">
+                </td>
+                <td valign="top">
+                  <input class="form-control field-validate" list="list_transport" listaffter="list_transport_number" name="id_transport{{$key}}" id="id_transport" onchange="id_transportFunc(this)" autocomplete="off" value="{{ $value->code }}">
+                </td>
+                <td valign="top">
+                  <input class="form-control field-validate" list="list_transport_number" listaffter="receive_date" name="transport_number{{$key}}" id="transport_number" onchange="transport_numberFunc(this)" autocomplete="off" value="{{ $value->transport_number }}">
+                </td>
+                <td valign="top">
+                  <input class="form-control field-validate" list="receive_date" name="receive_date{{$key}}" autocomplete="off" value="{{ $value->latex_receive_date }}">
+                </td>
+                <td valign="top">
+                  <input class="form-control field-validate" name="expand{{$key}}" placeholder="Nhập khối lượng bành" value="{{ $value->expand }}">
+                </td>
+                <td valign="top">
+                  <input class="form-control field-validate" name="mass{{$key}}" placeholder="Nhập khối lượng lô hàng" value="{{ $value->mass }}">
+                </td>
+                <td valign="top">
+                  	<input type="button" class="btn btn-primary btn-flat" value="Xoá dòng" onclick="deleteRow(this)" style="background: none;color: red;" />
+              	</td>
+             </tr>
+             <?php $a = $key; ?>
+             @endforeach
+             <input type="text" hidden value="{{$a}}" id="setcount">
+      </table>
+    <div class="nut">
+      	<input style="margin-left: 15px;" class="btn btn-primary btn-flat" type="button" value="Thêm dòng" onclick="add1()" id="btn" />
+    </div> 
+</div> 
+ <div id="datalist">
+   <datalist id="list_farm">
+    <select multiple size=8 class="event-type-select">
+      @foreach($resources as $row)
+      <option value="{{$row->farm}}">{{$row->farm}}</option>
+      @endforeach
+    </select>
+</datalist> 
+ </div>
+<script type="text/javascript">
+	var count1 = parseInt(document.getElementById("setcount").value);
+    document.getElementById('count').setAttribute('value', count1 +1);
+  var nextVal =  1;
+  function add1() {
+    var count = parseInt(document.getElementById("count").value);
+    nextVal = count + 1;
+    var num = document.getElementById("t1").rows.length;
+    var x = document.createElement("tr");
+
+  	a = document.createElement("td");
+  	anode = document.createElement("input");
+  	b = document.createAttribute("type");
+  	b.value = "text";
+  	anode.setAttribute('name','farm'+ nextVal);
+  	anode.setAttribute('id','farm'+ nextVal);
+  	anode.setAttribute('class','form-control field-validate');
+  	anode.setAttribute('type','text');
+    anode.setAttribute('list','list_farm');
+    anode.setAttribute('onchange','farmFunc(this)');
+    anode.setAttribute('listaffter','list_transport'+ nextVal);
+  	a.appendChild(anode);
+  	x.appendChild(a);
+
+    a = document.createElement("td");
+    anode = document.createElement("input");
+    b = document.createAttribute("type");
+    b.value = "text";
+    anode.setAttribute('name','id_transport'+ nextVal);
+    anode.setAttribute('id','id_transport'+ nextVal);
+    anode.setAttribute('class','form-control field-validate');
+    anode.setAttribute('type','text');
+    anode.setAttribute('list','list_transport'+ nextVal);
+    anode.setAttribute('onchange','id_transportFunc(this)');
+    anode.setAttribute('listaffter','list_transport_number'+ nextVal);
+    anode.setAttribute('autocomplete','off');
+    a.appendChild(anode);
+    x.appendChild(a);
+
+    a = document.createElement("td");
+    anode = document.createElement("input");
+    b = document.createAttribute("type");
+    b.value = "text";
+    anode.setAttribute('name','transport_number'+ nextVal);
+    anode.setAttribute('id','transport_number'+ nextVal);
+    anode.setAttribute('class','form-control field-validate');
+    anode.setAttribute('type','text');
+    anode.setAttribute('list','list_transport_number'+ nextVal);
+    anode.setAttribute('onchange','transport_numberFunc(this)');
+    anode.setAttribute('listaffter','receive_date'+ nextVal);
+    anode.setAttribute('autocomplete','off');
+    a.appendChild(anode);
+    x.appendChild(a);
+
+    a = document.createElement("td");
+    anode = document.createElement("input");
+    b = document.createAttribute("type");
+    b.value = "text";
+    anode.setAttribute('name','receive_date'+ nextVal);
+    // anode.setAttribute('id','receive_date'+ nextVal);
+    anode.setAttribute('class','form-control field-validate');
+    anode.setAttribute('type','text');
+    anode.setAttribute('list','receive_date'+ nextVal);
+    anode.setAttribute('autocomplete','off');
+    a.appendChild(anode);
+    x.appendChild(a);
+
+    a = document.createElement("td");
+    anode = document.createElement("input");
+    b = document.createAttribute("type");
+    b.value = "text";
+    anode.setAttribute('name','expand'+ nextVal);
+    anode.setAttribute('id','expand'+ nextVal);
+    anode.setAttribute('class','form-control field-validate');
+    anode.setAttribute('type','text');
+    a.appendChild(anode);
+    x.appendChild(a);
+
+    a = document.createElement("td");
+    anode = document.createElement("input");
+    b = document.createAttribute("type");
+    b.value = "text";
+    anode.setAttribute('name','mass'+ nextVal);
+    anode.setAttribute('id','mass'+ nextVal);
+    anode.setAttribute('class','form-control field-validate');
+    anode.setAttribute('type','text');
+    a.appendChild(anode);
+    x.appendChild(a);
+
+  	a = document.createElement("td");
+  	anode = document.createElement('input');
+  	anode.setAttribute('type','button');
+  	anode.setAttribute('value','Xoá dòng');
+  	anode.setAttribute('style','background:none; color:red');
+  	anode.setAttribute('class','btn btn-primary btn-flat');
+  	anode.setAttribute('onclick','deleteRow(this)');
+  	a.appendChild(anode);
+  	x.appendChild(a);
+  	document.getElementById("t1").appendChild(x);
+  	document.getElementById('count').setAttribute('value', nextVal);
+
+   $( window ).load(function() {
+  // Run code
+});
+	}
+  function deleteRow(e,v) {
+    var tr = e.parentElement.parentElement;
+    var tbl = e.parentElement.parentElement.parentElement;
+    tbl.removeChild(tr);
+  }    
+// list data for count
+var farm = '';
+var id_transport ='';
+// ===================
+  function farmFunc (data) {
+    let listaffter = data.getAttribute('listaffter');
+    console.log(listaffter);
+    var count = parseInt(document.getElementById("count").value);
+      var data = data.value;
+      
+      farm = data;
+      $.ajax({
+        url: "{{route('admin.factory.lists.searchTransport')}}",
+        method: "POST",
+        data: {
+          data:data,
+          _token: '{{ csrf_token()}}',
+        },
+        success:function(result){
+          var options= [];
+          var list = `
+          <datalist id="${listaffter}">
+            <select multiple size=8 class="event-type-select" id ="select_list_transport">
+            </select>
+          </datalist> `;
+          document.getElementById("datalist").insertAdjacentHTML('afterbegin', list);
+          for(var i = 0; i < result.length; i++){
+             options[i] = `<option value="${result[i].code}">${result[i].code}</option>`;
+          }
+          $('#select_list_transport').html(options);
+        }
+      });
+  }
+      
+   function id_transportFunc (data) {
+    let listaffter = data.getAttribute('listaffter');
+      var count = parseInt(document.getElementById("count").value);
+      var data = data.value;
+      id_transport = data;
+      $.ajax({
+        url: "{{route('admin.factory.lists.searchTransportNumber')}}",
+        method: "POST",
+        data: {
+          data:data,
+          farm:farm,
+          _token: '{{ csrf_token()}}',
+        },
+        success:function(result){
+          var options= [];
+          var list = `
+          <datalist id="${listaffter}">
+            <select multiple size=8 class="event-type-select" id ="select_list_transport_number">
+            </select>
+          </datalist> `;
+          document.getElementById("datalist").insertAdjacentHTML('afterbegin', list);
+          for(var i = 0; i < result.length; i++){
+             options[i] = `<option value="${result[i].transport_number}">${result[i].transport_number}</option>`;
+          }
+          $('#select_list_transport_number').html(options);
+        }
+      });
+    }
+
+   function transport_numberFunc (data) {
+    let listaffter = data.getAttribute('listaffter');
+      var count = parseInt(document.getElementById("count").value);
+      var data = data.value;
+      $.ajax({
+        url: "{{route('admin.factory.lists.searchReceiveDate')}}",
+        method: "POST",
+        data: {
+          data:data,
+          farm:farm,
+          id_transport:id_transport,
+          _token: '{{ csrf_token()}}',
+        },
+        success:function(result){
+          console.log(data);
+          var options= [];
+          var list = `
+          <datalist id="${listaffter}">
+            <select multiple size=8 class="event-type-select" id ="select_receive_date">
+            </select>
+          </datalist> `;
+          document.getElementById("datalist").insertAdjacentHTML('afterbegin', list);
+          for(var i = 0; i < result.length; i++){
+             options[i] = `<option value="${result[i].latex_receive_date}">${result[i].latex_receive_date}</option>`;
+          }
+          $('#select_receive_date').html(options);
+        }
+      });
+    }
+
+</script>
