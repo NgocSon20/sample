@@ -1,0 +1,224 @@
+<?php
+
+namespace Modules\Factory\Http\Controllers\Admin;
+
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Modules\Factory\Entities\Lists;
+use Modules\Factory\Http\Requests\CreateListsRequest;
+use Modules\Factory\Http\Requests\UpdateListsRequest;
+use Modules\Factory\Repositories\ListsRepository;
+use Modules\Core\Http\Controllers\Admin\AdminBaseController;
+use DB;
+use Log;
+
+class ListsController extends AdminBaseController
+{
+    /**
+     * @var ListsRepository
+     */
+    private $lists;
+
+    public function __construct(ListsRepository $lists)
+    {
+        parent::__construct();
+
+        $this->lists = $lists;
+    }
+
+    /**
+     * Display a listing of the resource.
+     *
+     * @return Response
+     */
+    public function index()
+    {
+        // $lists = $this->lists->all();
+        $factory = auth()->user()->factory;
+        $lists = DB::table('list_plost')
+            ->select('list_plost.*', 'resources.*', 'transport.*', 'list_plost.id as id', 'plots.code as code', 'transport.code as transport_code')
+            ->leftjoin('resources', 'list_plost.farm_id', '=', 'resources.id')
+            ->leftjoin('transport', 'resources.id_transport', '=', 'transport.id')
+            ->leftjoin('plots', 'list_plost.plot_id', '=', 'plots.id');
+        if ($factory === 'All') {
+          $lists = $lists->get();
+        } else {
+          $lists = $lists->where('factory_reception', $factory)->get();
+        }
+
+        return view('factory::admin.lists.index', compact('lists'));
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     *
+     * @return Response
+     */
+    public function create()
+    {
+        $plots = DB::table('plots')->get();
+        $resources = DB::table('resources')->groupBy('farm')->get();
+       
+        return view('factory::admin.lists.create', compact('plots', 'resources'));
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     *
+     * @param  CreateListsRequest $request
+     * @return Response
+     */
+    public function store(CreateListsRequest $request)
+    {
+        log::info($request->all());  
+        $data = array();
+        $count = $request->count;
+        for( $i = 1; $i <= $count ; $i++){
+            if(empty($request->input('farm'.$i))){
+              continue;
+            } 
+            $farm = DB::table('resources')
+                ->select('resources.id')
+                ->leftjoin('transport', 'resources.id_transport', '=', 'transport.id')
+                ->where('resources.farm', $request->input('farm'.$i))
+                ->where('transport.code', $request->input('id_transport'.$i))
+                ->where('transport_number', $request->input('transport_number'.$i))
+                ->where('latex_receive_date', $request->input('receive_date'.$i))
+                ->first();   
+           array_push($data, array(
+              'plot_id' => $request->input('plot_id'),
+              'date_manufacture' => $request->input('date_manufacture'),
+              'expand' => $request->input('expand'.$i),
+              'mass' => $request->input('mass'.$i),
+              'farm_id' => $farm->id,
+              'status' => 'waitting',
+            ));
+           log::info($data);
+
+        }
+        DB::table('list_plost')->insert($data);
+        // $this->lists->create($request->all());
+        return redirect()->route('admin.factory.lists.index')
+            ->withSuccess(trans('core::core.messages.resource created', ['name' => trans('factory::lists.title.lists')]));
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     *
+     * @param  Lists $lists
+     * @return Response
+     */
+    public function edit(Lists $lists)
+    {
+        $plots = DB::table('plots')->get();
+        $resources = DB::table('resources')->groupBy('farm')->get();
+        $data = DB::table('list_plost')
+            ->select('list_plost.*', 'resources.*', 'transport.*', 'resources.farm as farm', 'list_plost.id as id')
+            ->leftjoin('resources', 'list_plost.farm_id', '=', 'resources.id')
+            ->leftjoin('transport', 'resources.id_transport', '=', 'transport.id')
+            ->where('list_plost.plot_id',$lists->plot_id)
+            ->get();
+       
+        return view('factory::admin.lists.edit', compact('lists', 'plots', 'resources', 'data'));
+    }
+
+    /**
+     * Update the specified resource in storage.
+     *
+     * @param  Lists $lists
+     * @param  UpdateListsRequest $request
+     * @return Response
+     */
+    public function update(Lists $lists, UpdateListsRequest $request)
+    {
+        // get old list_plost
+        $oldPlost = DB::table('list_plost')->select('id')->where('plot_id', $request->plot_id)->get();
+        $oldArr = [];
+        foreach ($oldPlost as $key => $value) {
+            array_push($oldArr, $value->id);
+        }
+        $newPlost = array();
+        $count = $request->count;
+        for( $i = 1; $i <= $count ; $i++){
+            if(empty($request->input('farm'.$i))){
+              continue;
+            }
+            $farm = DB::table('resources')
+                ->select('resources.id')
+                ->leftjoin('transport', 'resources.id_transport', '=', 'transport.id')
+                ->where('resources.farm', $request->input('farm'.$i))
+                ->where('transport.code', $request->input('id_transport'.$i))
+                ->where('transport_number', $request->input('transport_number'.$i))
+                ->where('latex_receive_date', $request->input('receive_date'.$i))
+                ->first();  
+            $data = [
+                'plot_id' => $request->input('plot_id'),
+                'date_manufacture' => $request->input('date_manufacture'),
+                'expand' => $request->input('expand'.$i),
+                'mass' => $request->input('mass'.$i),
+                'farm_id' => $farm->id,
+            ];
+            if ($request->input('old_id'.$i)) {
+                DB::table('list_plost')->where('id', $request->input('old_id'.$i))->update($data);
+            } else {
+                DB::table('list_plost')->insert($data);
+            }
+            array_push($newPlost, $request->input('old_id'.$i));
+        }
+        $diff = array_diff($oldArr, $newPlost);
+        foreach ($diff as $key => $value) {
+            DB::table('list_plost')->where('id', $value)->delete();
+        }
+        // $this->lists->update($lists, $request->all());
+        return redirect()->route('admin.factory.lists.index')
+            ->withSuccess(trans('core::core.messages.resource updated', ['name' => trans('factory::lists.title.lists')]));
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @param  Lists $lists
+     * @return Response
+     */
+    public function destroy(Lists $lists)
+    {
+        $this->lists->destroy($lists);
+
+        return redirect()->route('admin.factory.lists.index')
+            ->withSuccess(trans('core::core.messages.resource deleted', ['name' => trans('factory::lists.title.lists')]));
+    }
+
+    public function searchTransport (Request $request) {
+        $resources = DB::table('resources')
+            ->select('transport.id', 'code')
+            ->leftjoin('transport', 'resources.id_transport', '=', 'transport.id')
+            ->where('resources.farm', $request->data)
+            ->groupBy('code')
+            ->get();
+        return $resources;
+    }
+
+    public function searchTransportNumber (Request $request) {
+        $resources = DB::table('resources')
+            ->leftjoin('transport', 'resources.id_transport', '=', 'transport.id')
+            ->where('code', $request->data)
+            ->where('resources.farm', $request->farm )
+            ->groupBy('transport_number')
+            ->get();
+            log::info($resources);
+        return $resources;
+    }
+
+    public function searchReceiveDate (Request $request) {
+        
+        $resources = DB::table('resources')
+        ->leftjoin('transport', 'resources.id_transport', '=', 'transport.id')
+            ->where('transport_number', $request->data)
+            ->where('resources.farm', $request->farm)
+            ->where('code', $request->id_transport)
+            ->get();
+            log::info($resources);
+        return $resources;
+    }
+
+}
